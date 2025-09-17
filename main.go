@@ -1,0 +1,480 @@
+package main
+
+import (
+	"math/rand"
+	"time"
+
+	"github.com/pterm/pterm"
+	"atomicgo.dev/keyboard"
+	"atomicgo.dev/keyboard/keys"
+)
+
+// Define the tetromino shapes
+type Tetromino struct {
+	Shape    [][]int
+	Color    pterm.Color
+	X, Y     int
+	Rotation int
+}
+
+// Define the game board
+type Board struct {
+	Width, Height int
+	Grid          [][]int
+}
+
+// Define the game state
+type Game struct {
+	Board      Board
+	Current    Tetromino
+	Next       Tetromino
+	Score      int
+	Level      int
+	Lines      int
+	GameOver   bool
+	DropTime   time.Time
+	DropSpeed  time.Duration
+}
+
+// Tetromino shapes
+var (
+	I = Tetromino{
+		Shape: [][]int{
+			{0, 0, 0, 0},
+			{1, 1, 1, 1},
+			{0, 0, 0, 0},
+			{0, 0, 0, 0},
+		},
+		Color: pterm.FgCyan,
+	}
+
+	O = Tetromino{
+		Shape: [][]int{
+			{1, 1},
+			{1, 1},
+		},
+		Color: pterm.FgYellow,
+	}
+
+	T = Tetromino{
+		Shape: [][]int{
+			{0, 1, 0},
+			{1, 1, 1},
+			{0, 0, 0},
+		},
+		Color: pterm.FgMagenta,
+	}
+
+	S = Tetromino{
+		Shape: [][]int{
+			{0, 1, 1},
+			{1, 1, 0},
+			{0, 0, 0},
+		},
+		Color: pterm.FgGreen,
+	}
+
+	Z = Tetromino{
+		Shape: [][]int{
+			{1, 1, 0},
+			{0, 1, 1},
+			{0, 0, 0},
+		},
+		Color: pterm.FgRed,
+	}
+
+	J = Tetromino{
+		Shape: [][]int{
+			{1, 0, 0},
+			{1, 1, 1},
+			{0, 0, 0},
+		},
+		Color: pterm.FgBlue,
+	}
+
+	L = Tetromino{
+		Shape: [][]int{
+			{0, 0, 1},
+			{1, 1, 1},
+			{0, 0, 0},
+		},
+		Color: pterm.FgLightYellow,
+	}
+)
+
+// All tetrominoes
+var tetrominoes = []Tetromino{I, O, T, S, Z, J, L}
+
+// Initialize the game board
+func NewBoard(width, height int) Board {
+	grid := make([][]int, height)
+	for i := range grid {
+		grid[i] = make([]int, width)
+	}
+	return Board{Width: width, Height: height, Grid: grid}
+}
+
+// Initialize a new game
+func NewGame() *Game {
+	board := NewBoard(10, 20)
+	game := &Game{
+		Board:     board,
+		Score:     0,
+		Level:     1,
+		Lines:     0,
+		DropSpeed: 500 * time.Millisecond,
+	}
+	game.Current = game.newTetromino()
+	game.Next = game.newTetromino()
+	game.DropTime = time.Now().Add(game.DropSpeed)
+	return game
+}
+
+// Create a new random tetromino
+func (g *Game) newTetromino() Tetromino {
+	tet := tetrominoes[rand.Intn(len(tetrominoes))]
+	tet.X = g.Board.Width/2 - len(tet.Shape[0])/2
+	tet.Y = 0
+	return tet
+}
+
+// Rotate a tetromino
+func (t *Tetromino) Rotate() {
+	// Create a new rotated shape
+	size := len(t.Shape)
+	rotated := make([][]int, size)
+	for i := range rotated {
+		rotated[i] = make([]int, size)
+	}
+
+	// Perform rotation
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			rotated[x][size-1-y] = t.Shape[y][x]
+		}
+	}
+
+	t.Shape = rotated
+}
+
+// Check for collision
+func (g *Game) CheckCollision(t Tetromino, dx, dy int) bool {
+	for y := 0; y < len(t.Shape); y++ {
+		for x := 0; x < len(t.Shape[y]); x++ {
+			if t.Shape[y][x] != 0 {
+				newX := t.X + x + dx
+				newY := t.Y + y + dy
+
+				// Check boundaries
+				if newX < 0 || newX >= g.Board.Width || newY >= g.Board.Height {
+					return true
+				}
+
+				// Check if already occupied (but only if not above the board)
+				if newY >= 0 && g.Board.Grid[newY][newX] != 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// Merge tetromino with board
+func (g *Game) MergeTetromino() {
+	for y := 0; y < len(g.Current.Shape); y++ {
+		for x := 0; x < len(g.Current.Shape[y]); x++ {
+			if g.Current.Shape[y][x] != 0 {
+				boardY := g.Current.Y + y
+				boardX := g.Current.X + x
+				if boardY >= 0 && boardY < g.Board.Height && boardX >= 0 && boardX < g.Board.Width {
+					// Use color value to represent different colors
+					g.Board.Grid[boardY][boardX] = int(g.Current.Color)
+				}
+			}
+		}
+	}
+}
+
+// Clear completed lines
+func (g *Game) ClearLines() int {
+	linesCleared := 0
+	for y := g.Board.Height - 1; y >= 0; y-- {
+		full := true
+		for x := 0; x < g.Board.Width; x++ {
+			if g.Board.Grid[y][x] == 0 {
+				full = false
+				break
+			}
+		}
+		if full {
+			// Move all lines above down
+			for y2 := y; y2 > 0; y2-- {
+				for x := 0; x < g.Board.Width; x++ {
+					g.Board.Grid[y2][x] = g.Board.Grid[y2-1][x]
+				}
+			}
+			// Clear the top line
+			for x := 0; x < g.Board.Width; x++ {
+				g.Board.Grid[0][x] = 0
+			}
+			linesCleared++
+			y++ // Check the same line again
+		}
+	}
+	return linesCleared
+}
+
+// Update game state
+func (g *Game) Update() {
+	if g.GameOver {
+		return
+	}
+
+	// Check if it's time to drop
+	if time.Now().After(g.DropTime) {
+		if !g.CheckCollision(g.Current, 0, 1) {
+			g.Current.Y++
+		} else {
+			// Merge with board
+			g.MergeTetromino()
+
+			// Clear lines
+			lines := g.ClearLines()
+			if lines > 0 {
+				g.Lines += lines
+				g.Score += lines * 100 * g.Level
+				g.Level = g.Lines/10 + 1
+				g.DropSpeed = time.Duration(500-50*(g.Level-1)) * time.Millisecond
+				if g.DropSpeed < 50*time.Millisecond {
+					g.DropSpeed = 50 * time.Millisecond
+				}
+			}
+
+			// Create new tetromino
+			g.Current = g.Next
+			g.Next = g.newTetromino()
+
+			// Check for game over
+			if g.CheckCollision(g.Current, 0, 0) {
+				g.GameOver = true
+			}
+		}
+		g.DropTime = time.Now().Add(g.DropSpeed)
+	}
+}
+
+// Move current tetromino
+func (g *Game) Move(dx, dy int) {
+	if !g.CheckCollision(g.Current, dx, dy) {
+		g.Current.X += dx
+		g.Current.Y += dy
+	}
+}
+
+// Rotate current tetromino
+func (g *Game) Rotate() {
+	originalShape := g.Current.Shape
+	g.Current.Rotate()
+	if g.CheckCollision(g.Current, 0, 0) {
+		// Revert if collision
+		g.Current.Shape = originalShape
+	}
+}
+
+// Draw the game
+func (g *Game) Draw(area *pterm.AreaPrinter) {
+	// Create a copy of the board to draw on
+	displayBoard := make([][]int, g.Board.Height)
+	for i := range displayBoard {
+		displayBoard[i] = make([]int, g.Board.Width)
+		copy(displayBoard[i], g.Board.Grid[i])
+	}
+
+	// Draw current tetromino on the board copy
+	for y := 0; y < len(g.Current.Shape); y++ {
+		for x := 0; x < len(g.Current.Shape[y]); x++ {
+			if g.Current.Shape[y][x] != 0 {
+				boardY := g.Current.Y + y
+				boardX := g.Current.X + x
+				if boardY >= 0 && boardY < g.Board.Height && boardX >= 0 && boardX < g.Board.Width {
+					displayBoard[boardY][boardX] = int(g.Current.Color)
+				}
+			}
+		}
+	}
+
+	// Draw the board
+	content := "\n"
+
+	// Draw title
+	content += pterm.FgLightCyan.Sprint("TETRIS") + "\n\n"
+
+	// Draw top border
+	content += "┌" + "────────────────────" + "┐\n"
+
+	// Draw board content
+	for y := 0; y < g.Board.Height; y++ {
+		content += "│"
+		for x := 0; x < g.Board.Width; x++ {
+			switch displayBoard[y][x] {
+			case 0: // Empty
+				content += "  "
+			default: // Placed piece or current piece
+				// Convert back to color
+				color := pterm.Color(displayBoard[y][x])
+				content += color.Sprint("██")
+			}
+		}
+		content += "│\n"
+	}
+
+	// Draw bottom border
+	content += "└" + "────────────────────" + "┘\n\n"
+
+	// Draw game info
+	content += pterm.Sprintf("Score: %d\n", g.Score)
+	content += pterm.Sprintf("Level: %d\n", g.Level)
+	content += pterm.Sprintf("Lines: %d\n", g.Lines)
+
+	// Draw next piece preview
+	content += "\nNext:\n"
+	nextSize := len(g.Next.Shape)
+	for y := 0; y < nextSize; y++ {
+		content += "  "
+		for x := 0; x < nextSize; x++ {
+			if y < len(g.Next.Shape) && x < len(g.Next.Shape[y]) && g.Next.Shape[y][x] != 0 {
+				content += g.Next.Color.Sprint("██")
+			} else {
+				content += "  "
+			}
+		}
+		content += "\n"
+	}
+
+	// Draw controls
+	content += "\nControls:\n"
+	content += "← → : Move\n"
+	content += "↑   : Rotate\n"
+	content += "↓   : Soft Drop\n"
+	content += "Space : Hard Drop\n"
+	content += "q   : Quit\n"
+
+	if g.GameOver {
+		content += pterm.FgRed.Sprint("\nGAME OVER!\nPress 'q' to quit.\n")
+	}
+
+	area.Update(content)
+}
+
+// Handle keyboard input
+func (g *Game) HandleInput(key keys.Key) {
+	switch key.Code {
+	case keys.RuneKey:
+		switch key.String() {
+		case "a", "A":
+			g.Move(-1, 0) // Move left
+		case "d", "D":
+			g.Move(1, 0) // Move right
+		case "s", "S":
+			g.Move(0, 1) // Move down
+		case "w", "W":
+			g.Rotate() // Rotate
+		case " ":
+			// Hard drop
+			for !g.CheckCollision(g.Current, 0, 1) {
+				g.Current.Y++
+			}
+		case "q", "Q":
+			g.GameOver = true // Quit game
+		}
+	case keys.Enter:
+		g.Rotate() // Rotate
+	case keys.Left:
+		g.Move(-1, 0) // Move left
+	case keys.Right:
+		g.Move(1, 0) // Move right
+	case keys.Down:
+		g.Move(0, 1) // Move down
+	case keys.Up:
+		g.Rotate() // Rotate
+	case keys.Space:
+		// Hard drop
+		for !g.CheckCollision(g.Current, 0, 1) {
+			g.Current.Y++
+		}
+	}
+}
+
+func main() {
+	// Seed random number generator
+	rand.Seed(time.Now().UnixNano())
+
+	// Clear screen
+	print("\033[H\033[2J")
+
+	// Show welcome message
+	pterm.DefaultBigText.WithLetters(
+		pterm.NewLettersFromStringWithStyle("TETRIS", pterm.NewStyle(pterm.FgLightCyan)),
+	).Render()
+
+	pterm.Println()
+	pterm.Println("Press any key to start...")
+
+	// Wait for key press
+	keyboard.Listen(func(key keys.Key) (stop bool, err error) {
+		return true, nil
+	})
+
+	// Create game
+	game := NewGame()
+
+	// Create area for rendering
+	area, err := pterm.DefaultArea.Start()
+	if err != nil {
+		panic(err)
+	}
+	defer area.Stop()
+
+	// Channel to signal game exit
+	exitChan := make(chan bool)
+
+	// Start keyboard listener in a separate goroutine
+	go func() {
+		err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
+			if key.Code == keys.RuneKey && key.String() == "q" {
+				exitChan <- true
+				return true, nil // Quit game
+			}
+
+			game.HandleInput(key)
+			return false, nil
+		})
+
+		if err != nil {
+			pterm.Error.Printfln("Failed to start keyboard listener: %v", err)
+		}
+	}()
+
+	// Game loop
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-exitChan:
+			return
+		case <-ticker.C:
+			game.Update()
+			game.Draw(area)
+
+			if game.GameOver {
+				// Keep the game display visible after game over
+				time.Sleep(3 * time.Second)
+				return
+			}
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
