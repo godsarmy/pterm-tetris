@@ -304,18 +304,67 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		}
 	}
 
+	// Calculate padding for centering
+	terminalWidth := 80 // Default width if we can't get actual terminal size
+	terminalHeight := 24 // Default height if we can't get actual terminal size
+	
+	// Try to get actual terminal size
+	if width, height, err := pterm.GetTerminalSize(); err == nil {
+		terminalWidth = width
+		terminalHeight = height
+	}
+
+	// Game board width: 2 (borders) + 2 * 10 (blocks) = 22 characters
+	// Game board height: 2 (borders) + 20 (rows) = 22 lines
+	// Total content width: approximately 30 characters (including info panel)
+	// Total content height: approximately 35 lines (including title, info, controls)
+	
+	gameWidth := 30
+	gameHeight := 35
+	
+	horizontalPadding := (terminalWidth - gameWidth) / 2
+	verticalPadding := (terminalHeight - gameHeight) / 2
+	
+	// Ensure padding is not negative
+	if horizontalPadding < 0 {
+		horizontalPadding = 0
+	}
+	if verticalPadding < 0 {
+		verticalPadding = 0
+	}
+	
+	// Create padding strings
+	hPadding := ""
+	for i := 0; i < horizontalPadding; i++ {
+		hPadding += " "
+	}
+
 	// Draw the board
 	content := "\n"
 
-	// Draw title
-	content += pterm.FgLightCyan.Sprint("TETRIS") + "\n\n"
+	// Add vertical padding
+	for i := 0; i < verticalPadding/2; i++ {
+		content += "\n"
+	}
+
+	// Draw title (centered)
+	title := pterm.FgLightCyan.Sprint("TETRIS")
+	titlePadding := hPadding
+	if terminalWidth > len("TETRIS") {
+		extraPadding := (terminalWidth - len("TETRIS")) / 2
+		titlePadding = ""
+		for i := 0; i < extraPadding; i++ {
+			titlePadding += " "
+		}
+	}
+	content += titlePadding + title + "\n\n"
 
 	// Draw top border
-	content += "┌" + "────────────────────" + "┐\n"
+	content += hPadding + "┌" + "────────────────────" + "┐\n"
 
 	// Draw board content
 	for y := 0; y < g.Board.Height; y++ {
-		content += "│"
+		content += hPadding + "│"
 		for x := 0; x < g.Board.Width; x++ {
 			switch displayBoard[y][x] {
 			case 0: // Empty
@@ -330,18 +379,18 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	}
 
 	// Draw bottom border
-	content += "└" + "────────────────────" + "┘\n\n"
+	content += hPadding + "└" + "────────────────────" + "┘\n\n"
 
 	// Draw game info
-	content += pterm.Sprintf("Score: %d\n", g.Score)
-	content += pterm.Sprintf("Level: %d\n", g.Level)
-	content += pterm.Sprintf("Lines: %d\n", g.Lines)
+	content += hPadding + pterm.Sprintf("Score: %d\n", g.Score)
+	content += hPadding + pterm.Sprintf("Level: %d\n", g.Level)
+	content += hPadding + pterm.Sprintf("Lines: %d\n", g.Lines)
 
 	// Draw next piece preview
-	content += "\nNext:\n"
+	content += hPadding + "\nNext:\n"
 	nextSize := len(g.Next.Shape)
 	for y := 0; y < nextSize; y++ {
-		content += "  "
+		content += hPadding + "  "
 		for x := 0; x < nextSize; x++ {
 			if y < len(g.Next.Shape) && x < len(g.Next.Shape[y]) && g.Next.Shape[y][x] != 0 {
 				content += g.Next.Color.Sprint("██")
@@ -353,15 +402,20 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	}
 
 	// Draw controls
-	content += "\nControls:\n"
-	content += "← → : Move\n"
-	content += "↑   : Rotate\n"
-	content += "↓   : Soft Drop\n"
-	content += "Space : Hard Drop\n"
-	content += "q   : Quit\n"
+	content += hPadding + "\nControls:\n"
+	content += hPadding + "← → : Move\n"
+	content += hPadding + "↑   : Rotate\n"
+	content += hPadding + "↓   : Soft Drop\n"
+	content += hPadding + "Space : Hard Drop\n"
+	content += hPadding + "q   : Quit\n"
 
 	if g.GameOver {
-		content += pterm.FgRed.Sprint("\nGAME OVER!\nPress 'q' to quit.\n")
+		content += hPadding + pterm.FgRed.Sprint("\nGAME OVER!\nPress 'q' to quit.\n")
+	}
+
+	// Add remaining vertical padding
+	for i := 0; i < verticalPadding/2; i++ {
+		content += "\n"
 	}
 
 	area.Update(content)
@@ -438,9 +492,16 @@ func main() {
 
 	// Channel to signal game exit
 	exitChan := make(chan bool)
+	
+	// Channel to signal keyboard listener exit
+	keyboardDone := make(chan bool)
 
 	// Start keyboard listener in a separate goroutine
 	go func() {
+		defer func() {
+			keyboardDone <- true
+		}()
+		
 		err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 			if key.Code == keys.RuneKey && key.String() == "q" {
 				exitChan <- true
@@ -460,10 +521,14 @@ func main() {
 	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
 
+	// Flag to track if we need to reset terminal
+	needReset := false
+
 	for {
 		select {
 		case <-exitChan:
-			return
+			needReset = true
+			goto cleanup
 		case <-ticker.C:
 			game.Update()
 			game.Draw(area)
@@ -471,10 +536,24 @@ func main() {
 			if game.GameOver {
 				// Keep the game display visible after game over
 				time.Sleep(3 * time.Second)
-				return
+				needReset = true
+				goto cleanup
 			}
 		default:
 			time.Sleep(10 * time.Millisecond)
 		}
+	}
+
+cleanup:
+	// Stop the area printer
+	area.Stop()
+
+	// Wait for keyboard listener to finish
+	<-keyboardDone
+
+	// Reset terminal if needed
+	if needReset {
+		print("\033c") // Reset terminal
+		print("\033[?25h") // Show cursor
 	}
 }
