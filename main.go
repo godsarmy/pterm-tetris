@@ -479,18 +479,43 @@ func main() {
 	// Clear screen
 	print("\033[H\033[2J")
 
-	// Show welcome message
-	pterm.DefaultBigText.WithLetters(
-		pterm.NewLettersFromStringWithStyle("TETRIS", pterm.NewStyle(pterm.FgLightCyan)),
-	).Render()
+	// Calculate padding for centering welcome message
+	terminalWidth := 80 // Default width if we can't get actual terminal size
+	terminalHeight := 24 // Default height if we can't get actual terminal size
+	
+	// Try to get actual terminal size
+	if width, height, err := pterm.GetTerminalSize(); err == nil {
+		terminalWidth = width
+		terminalHeight = height
+	}
 
-	pterm.Println()
-	pterm.Println("Press any key to start...")
+	// Create horizontal padding for centering
+	hPadding := ""
+	for i := 0; i < (terminalWidth-6)/2; i++ { // "TETRIS" is 6 characters wide
+		hPadding += " "
+	}
+
+	// Create vertical padding for centering
+	vPadding := ""
+	for i := 0; i < (terminalHeight-6)/2; i++ { // Approximately 6 lines for the whole message
+		vPadding += "\n"
+	}
+
+	// Show centered welcome message
+	content := vPadding
+	content += hPadding + pterm.FgLightCyan.Sprint("TETRIS") + "\n\n"
+	content += hPadding + "Press any key to start..." + vPadding
+	
+	// Print the centered content
+	print(content)
 
 	// Wait for key press
 	keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 		return true, nil
 	})
+
+	// Clear screen again for game
+	print("\033[H\033[2J")
 
 	// Create game
 	game := NewGame()
