@@ -489,22 +489,44 @@ func main() {
 		terminalHeight = height
 	}
 
-	// Create horizontal padding for centering
+	// Create ASCII art for "TETRIS"
+	tetrisArt := []string{
+		 "████████╗███████╗████████╗██████╗ ██╗███████╗",
+         "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║██╔════╝",
+         "   ██║   █████╗     ██║   ██████╔╝██║███████╗",
+         "   ██║   ██╔══╝     ██║   ██╔══██╗██║╚════██║",
+         "   ██║   ███████╗   ██║   ██║  ██║██║███████║",
+         "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚══════╝",
+	}
+
+	// Calculate horizontal padding
 	hPadding := ""
-	for i := 0; i < (terminalWidth-6)/2; i++ { // "TETRIS" is 6 characters wide
-		hPadding += " "
+	titleWidth := len(tetrisArt[0]) // Width of the first line
+	if titleWidth < terminalWidth {
+		for i := 0; i < (terminalWidth-titleWidth)/2; i++ {
+			hPadding += " "
+		}
 	}
 
-	// Create vertical padding for centering
+	// Calculate vertical padding
 	vPadding := ""
-	for i := 0; i < (terminalHeight-6)/2; i++ { // Approximately 6 lines for the whole message
-		vPadding += "\n"
+	artHeight := len(tetrisArt) + 3 // Art lines + "Press any key to start" + spacing
+	if artHeight < terminalHeight {
+		for i := 0; i < (terminalHeight-artHeight)/2; i++ {
+			vPadding += "\n"
+		}
 	}
 
-	// Show centered welcome message
+	// Show centered welcome message with large ASCII art
 	content := vPadding
-	content += hPadding + pterm.FgLightCyan.Sprint("TETRIS") + "\n\n"
-	content += hPadding + "Press any key to start..." + vPadding
+	
+	// Add the ASCII art
+	for _, line := range tetrisArt {
+		content += hPadding + pterm.FgLightCyan.Sprint(line) + "\n"
+	}
+	
+	// Add spacing and start message
+	content += "\n" + hPadding + "        Press any key to start..." + "\n" + vPadding
 	
 	// Print the centered content
 	print(content)
