@@ -314,16 +314,71 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		terminalHeight = height
 	}
 
-	// Game board width: 2 (borders) + 2 * 10 (blocks) = 22 characters
-	// Game board height: 2 (borders) + 20 (rows) = 22 lines
-	// Total content width: approximately 30 characters (including info panel)
-	// Total content height: approximately 35 lines (including title, info, controls)
+	// Prepare game board content
+	var boardLines []string
+	boardLines = append(boardLines, "┌────────────────────┐")
+	for y := 0; y < g.Board.Height; y++ {
+		line := "│"
+		for x := 0; x < g.Board.Width; x++ {
+			switch displayBoard[y][x] {
+			case 0: // Empty
+				line += "  "
+			default: // Placed piece or current piece
+				// Convert back to color
+				color := pterm.Color(displayBoard[y][x])
+				line += color.Sprint("██")
+			}
+		}
+		line += "│"
+		boardLines = append(boardLines, line)
+	}
+	boardLines = append(boardLines, "└────────────────────┘")
+
+	// Prepare info panel content
+	var infoLines []string
+	infoLines = append(infoLines, pterm.FgLightCyan.Sprint("TETRIS"))
+	infoLines = append(infoLines, "")
+	infoLines = append(infoLines, pterm.Sprintf("Score: %d", g.Score))
+	infoLines = append(infoLines, pterm.Sprintf("Level: %d", g.Level))
+	infoLines = append(infoLines, pterm.Sprintf("Lines: %d", g.Lines))
+	infoLines = append(infoLines, "")
+	infoLines = append(infoLines, "Next:")
 	
-	gameWidth := 30
-	gameHeight := 35
+	// Draw next piece preview
+	nextSize := len(g.Next.Shape)
+	for y := 0; y < nextSize; y++ {
+		line := ""
+		for x := 0; x < nextSize; x++ {
+			if y < len(g.Next.Shape) && x < len(g.Next.Shape[y]) && g.Next.Shape[y][x] != 0 {
+				line += g.Next.Color.Sprint("██")
+			} else {
+				line += "  "
+			}
+		}
+		infoLines = append(infoLines, line)
+	}
+
+	infoLines = append(infoLines, "")
+	infoLines = append(infoLines, "Controls:")
+	infoLines = append(infoLines, "← → : Move")
+	infoLines = append(infoLines, "↑   : Rotate")
+	infoLines = append(infoLines, "↓   : Soft Drop")
+	infoLines = append(infoLines, "Space : Hard Drop")
+	infoLines = append(infoLines, "q   : Quit")
+
+	if g.GameOver {
+		infoLines = append(infoLines, "")
+		infoLines = append(infoLines, pterm.FgRed.Sprint("GAME OVER!"))
+		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'q' to quit."))
+	}
+
+	// Calculate layout
+	boardWidth := 24 // 2 borders + 2*10 blocks + 2 spaces
+	infoWidth := 20
+	totalContentWidth := boardWidth + infoWidth + 2 // +2 for spacing
 	
-	horizontalPadding := (terminalWidth - gameWidth) / 2
-	verticalPadding := (terminalHeight - gameHeight) / 2
+	horizontalPadding := (terminalWidth - totalContentWidth) / 2
+	verticalPadding := (terminalHeight - len(boardLines) - 2) / 2 // -2 for title lines
 	
 	// Ensure padding is not negative
 	if horizontalPadding < 0 {
@@ -333,13 +388,13 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		verticalPadding = 0
 	}
 	
-	// Create padding strings
+	// Create horizontal padding
 	hPadding := ""
 	for i := 0; i < horizontalPadding; i++ {
 		hPadding += " "
 	}
 
-	// Draw the board
+	// Draw the content
 	content := "\n"
 
 	// Add vertical padding
@@ -347,70 +402,27 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		content += "\n"
 	}
 
-	// Draw title (centered)
-	title := pterm.FgLightCyan.Sprint("TETRIS")
-	titlePadding := hPadding
-	if terminalWidth > len("TETRIS") {
-		extraPadding := (terminalWidth - len("TETRIS")) / 2
-		titlePadding = ""
-		for i := 0; i < extraPadding; i++ {
-			titlePadding += " "
+	// Draw the game area with two columns
+	for i := 0; i < len(boardLines) || i < len(infoLines); i++ {
+		content += hPadding // Add horizontal padding
+		
+		// Left column (game board)
+		if i < len(boardLines) {
+			content += boardLines[i]
+		} else {
+			// Fill with empty space to match board height
+			content += "                        " // 24 spaces
 		}
-	}
-	content += titlePadding + title + "\n\n"
-
-	// Draw top border
-	content += hPadding + "┌" + "────────────────────" + "┐\n"
-
-	// Draw board content
-	for y := 0; y < g.Board.Height; y++ {
-		content += hPadding + "│"
-		for x := 0; x < g.Board.Width; x++ {
-			switch displayBoard[y][x] {
-			case 0: // Empty
-				content += "  "
-			default: // Placed piece or current piece
-				// Convert back to color
-				color := pterm.Color(displayBoard[y][x])
-				content += color.Sprint("██")
-			}
+		
+		// Space between columns
+		content += "  "
+		
+		// Right column (info panel)
+		if i < len(infoLines) {
+			content += infoLines[i]
 		}
-		content += "│\n"
-	}
-
-	// Draw bottom border
-	content += hPadding + "└" + "────────────────────" + "┘\n\n"
-
-	// Draw game info
-	content += hPadding + pterm.Sprintf("Score: %d\n", g.Score)
-	content += hPadding + pterm.Sprintf("Level: %d\n", g.Level)
-	content += hPadding + pterm.Sprintf("Lines: %d\n", g.Lines)
-
-	// Draw next piece preview
-	content += hPadding + "\nNext:\n"
-	nextSize := len(g.Next.Shape)
-	for y := 0; y < nextSize; y++ {
-		content += hPadding + "  "
-		for x := 0; x < nextSize; x++ {
-			if y < len(g.Next.Shape) && x < len(g.Next.Shape[y]) && g.Next.Shape[y][x] != 0 {
-				content += g.Next.Color.Sprint("██")
-			} else {
-				content += "  "
-			}
-		}
+		
 		content += "\n"
-	}
-
-	// Draw controls
-	content += hPadding + "\nControls:\n"
-	content += hPadding + "← → : Move\n"
-	content += hPadding + "↑   : Rotate\n"
-	content += hPadding + "↓   : Soft Drop\n"
-	content += hPadding + "Space : Hard Drop\n"
-	content += hPadding + "q   : Quit\n"
-
-	if g.GameOver {
-		content += hPadding + pterm.FgRed.Sprint("\nGAME OVER!\nPress 'q' to quit.\n")
 	}
 
 	// Add remaining vertical padding
