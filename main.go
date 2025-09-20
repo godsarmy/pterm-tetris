@@ -4,9 +4,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/pterm/pterm"
 	"atomicgo.dev/keyboard"
 	"atomicgo.dev/keyboard/keys"
+	"github.com/pterm/pterm"
 )
 
 // Define the tetromino shapes
@@ -25,15 +25,15 @@ type Board struct {
 
 // Define the game state
 type Game struct {
-	Board      Board
-	Current    Tetromino
-	Next       Tetromino
-	Score      int
-	Level      int
-	Lines      int
-	GameOver   bool
-	DropTime   time.Time
-	DropSpeed  time.Duration
+	Board     Board
+	Current   Tetromino
+	Next      Tetromino
+	Score     int
+	Level     int
+	Lines     int
+	GameOver  bool
+	DropTime  time.Time
+	DropSpeed time.Duration
 }
 
 // Tetromino shapes
@@ -305,9 +305,9 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	}
 
 	// Calculate padding for centering
-	terminalWidth := 80 // Default width if we can't get actual terminal size
+	terminalWidth := 80  // Default width if we can't get actual terminal size
 	terminalHeight := 24 // Default height if we can't get actual terminal size
-	
+
 	// Try to get actual terminal size
 	if width, height, err := pterm.GetTerminalSize(); err == nil {
 		terminalWidth = width
@@ -343,7 +343,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, pterm.Sprintf("Lines: %d", g.Lines))
 	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, "Next:")
-	
+
 	// Draw next piece preview
 	nextSize := len(g.Next.Shape)
 	for y := 0; y < nextSize; y++ {
@@ -376,10 +376,10 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	boardWidth := 24 // 2 borders + 2*10 blocks + 2 spaces
 	infoWidth := 20
 	totalContentWidth := boardWidth + infoWidth + 2 // +2 for spacing
-	
+
 	horizontalPadding := (terminalWidth - totalContentWidth) / 2
 	verticalPadding := (terminalHeight - len(boardLines) - 2) / 2 // -2 for title lines
-	
+
 	// Ensure padding is not negative
 	if horizontalPadding < 0 {
 		horizontalPadding = 0
@@ -387,7 +387,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	if verticalPadding < 0 {
 		verticalPadding = 0
 	}
-	
+
 	// Create horizontal padding
 	hPadding := ""
 	for i := 0; i < horizontalPadding; i++ {
@@ -405,7 +405,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	// Draw the game area with two columns
 	for i := 0; i < len(boardLines) || i < len(infoLines); i++ {
 		content += hPadding // Add horizontal padding
-		
+
 		// Left column (game board)
 		if i < len(boardLines) {
 			content += boardLines[i]
@@ -413,15 +413,15 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 			// Fill with empty space to match board height
 			content += "                        " // 24 spaces
 		}
-		
+
 		// Space between columns
 		content += "  "
-		
+
 		// Right column (info panel)
 		if i < len(infoLines) {
 			content += infoLines[i]
 		}
-		
+
 		content += "\n"
 	}
 
@@ -480,9 +480,9 @@ func main() {
 	print("\033[H\033[2J")
 
 	// Calculate padding for centering welcome message
-	terminalWidth := 80 // Default width if we can't get actual terminal size
+	terminalWidth := 80  // Default width if we can't get actual terminal size
 	terminalHeight := 24 // Default height if we can't get actual terminal size
-	
+
 	// Try to get actual terminal size
 	if width, height, err := pterm.GetTerminalSize(); err == nil {
 		terminalWidth = width
@@ -491,12 +491,12 @@ func main() {
 
 	// Create ASCII art for "TETRIS"
 	tetrisArt := []string{
-		 "████████╗███████╗████████╗██████╗ ██╗███████╗",
-         "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║██╔════╝",
-         "   ██║   █████╗     ██║   ██████╔╝██║███████╗",
-         "   ██║   ██╔══╝     ██║   ██╔══██╗██║╚════██║",
-         "   ██║   ███████╗   ██║   ██║  ██║██║███████║",
-         "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚══════╝",
+		"████████╗███████╗████████╗██████╗ ██╗███████╗",
+		"╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║██╔════╝",
+		"   ██║   █████╗     ██║   ██████╔╝██║███████╗",
+		"   ██║   ██╔══╝     ██║   ██╔══██╗██║╚════██║",
+		"   ██║   ███████╗   ██║   ██║  ██║██║███████║",
+		"   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚══════╝",
 	}
 
 	// Calculate horizontal padding
@@ -519,15 +519,15 @@ func main() {
 
 	// Show centered welcome message with large ASCII art
 	content := vPadding
-	
+
 	// Add the ASCII art
 	for _, line := range tetrisArt {
 		content += hPadding + pterm.FgLightCyan.Sprint(line) + "\n"
 	}
-	
+
 	// Add spacing and start message
 	content += "\n" + hPadding + "        Press any key to start..." + "\n" + vPadding
-	
+
 	// Print the centered content
 	print(content)
 
@@ -551,7 +551,7 @@ func main() {
 
 	// Channel to signal game exit
 	exitChan := make(chan bool, 1) // Buffered channel to prevent blocking
-	
+
 	// Channel to signal keyboard listener exit
 	keyboardDone := make(chan bool, 1) // Buffered channel
 
@@ -560,7 +560,7 @@ func main() {
 		defer func() {
 			keyboardDone <- true
 		}()
-		
+
 		err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 			if key.Code == keys.RuneKey && (key.String() == "q" || key.String() == "Q") {
 				exitChan <- true
@@ -607,7 +607,7 @@ func main() {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		
+
 		if gameFinished {
 			goto cleanup
 		}
@@ -627,7 +627,7 @@ cleanup:
 
 	// Reset terminal if needed
 	if needReset {
-		print("\033c") // Reset terminal
+		print("\033c")     // Reset terminal
 		print("\033[?25h") // Show cursor
 	}
 }
