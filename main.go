@@ -550,10 +550,10 @@ func main() {
 	defer area.Stop()
 
 	// Channel to signal game exit
-	exitChan := make(chan bool)
+	exitChan := make(chan bool, 1) // Buffered channel to prevent blocking
 	
 	// Channel to signal keyboard listener exit
-	keyboardDone := make(chan bool)
+	keyboardDone := make(chan bool, 1) // Buffered channel
 
 	// Start keyboard listener in a separate goroutine
 	go func() {
@@ -562,7 +562,7 @@ func main() {
 		}()
 		
 		err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
-			if key.Code == keys.RuneKey && key.String() == "q" {
+			if key.Code == keys.RuneKey && (key.String() == "q" || key.String() == "Q") {
 				exitChan <- true
 				return true, nil // Quit game
 			}
@@ -582,24 +582,34 @@ func main() {
 
 	// Flag to track if we need to reset terminal
 	needReset := false
+	gameFinished := false
 
 	for {
 		select {
 		case <-exitChan:
 			needReset = true
-			goto cleanup
+			gameFinished = true
 		case <-ticker.C:
-			game.Update()
-			game.Draw(area)
+			if !gameFinished {
+				game.Update()
+				game.Draw(area)
 
-			if game.GameOver {
-				// Keep the game display visible after game over
-				time.Sleep(3 * time.Second)
-				needReset = true
-				goto cleanup
+				if game.GameOver {
+					// Keep the game display visible after game over
+					time.Sleep(3 * time.Second)
+					needReset = true
+					gameFinished = true
+				}
 			}
 		default:
+			if gameFinished {
+				goto cleanup
+			}
 			time.Sleep(10 * time.Millisecond)
+		}
+		
+		if gameFinished {
+			goto cleanup
 		}
 	}
 
@@ -607,8 +617,13 @@ cleanup:
 	// Stop the area printer
 	area.Stop()
 
-	// Wait for keyboard listener to finish
-	<-keyboardDone
+	// Wait for keyboard listener to finish with a timeout
+	select {
+	case <-keyboardDone:
+		// Keyboard listener finished normally
+	case <-time.After(100 * time.Millisecond):
+		// Timeout - keyboard listener didn't finish, but we need to continue
+	}
 
 	// Reset terminal if needed
 	if needReset {
