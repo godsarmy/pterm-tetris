@@ -1,8 +1,7 @@
-# TETRIS Game in Go with pterm
+# TETRIS Game in Golang with pterm
 
-A terminal-based TETRIS game implemented in Go using the pterm library for terminal rendering.
-
-This project follows the [Standard Go Project Layout](https://github.com/golang-standards/project-layout).
+A TUI TETRIS game implemented in Golang with [pterm](https://github.com/pterm/pterm)
+library for terminal rendering.
 
 ## Features
 
