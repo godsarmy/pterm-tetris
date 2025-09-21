@@ -44,22 +44,6 @@ Or if you built the binary:
 - **Space** : Hard drop (instantly drop piece)
 - **q** : Quit game
 
-## Project Structure
-
-```
-pterm-tetris/
-├── cmd/
-│   └── tetris/
-│       └── main.go      # Main application entry point
-├── internal/
-│   └── game/
-│       └── game.go      # Game logic and implementation
-├── go.mod               # Go module definition
-├── go.sum               # Go module checksums
-├── README.md            # This file
-└── LICENSE              # License information
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
