@@ -7,6 +7,7 @@ import (
 	"atomicgo.dev/keyboard/keys"
 	"github.com/pterm/pterm"
 	"pterm-tetris/internal/game"
+	_ "pterm-tetris/internal/version"
 )
 
 func main() {

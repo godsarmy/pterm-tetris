@@ -7,6 +7,7 @@ import (
 	"atomicgo.dev/keyboard"
 	"atomicgo.dev/keyboard/keys"
 	"github.com/pterm/pterm"
+	"pterm-tetris/internal/version"
 )
 
 // Define the tetromino shapes
@@ -337,6 +338,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	// Prepare info panel content
 	var infoLines []string
 	infoLines = append(infoLines, pterm.FgLightCyan.Sprint("TETRIS"))
+	infoLines = append(infoLines, pterm.FgLightWhite.Sprint("v"+version.Version))
 	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, pterm.Sprintf("Score: %d", g.Score))
 	infoLines = append(infoLines, pterm.Sprintf("Level: %d", g.Level))
@@ -513,7 +515,7 @@ func ShowWelcomeScreen() {
 
 	// Calculate vertical padding
 	vPadding := ""
-	artHeight := len(tetrisArt) + 3 // Art lines + "Press any key to start" + spacing
+	artHeight := len(tetrisArt) + 4 // Art lines + version + "Press any key to start" + spacing
 	if artHeight < terminalHeight {
 		for i := 0; i < (terminalHeight-artHeight)/2; i++ {
 			vPadding += "\n"
@@ -527,6 +529,9 @@ func ShowWelcomeScreen() {
 	for _, line := range tetrisArt {
 		content += hPadding + pterm.FgLightCyan.Sprint(line) + "\n"
 	}
+
+	// Add version information
+	content += "\n" + hPadding + "              v" + version.Version + "\n"
 
 	// Add spacing and start message
 	content += "\n" + hPadding + "        Press any key to start..." + "\n" + vPadding
