@@ -12,6 +12,8 @@ library for terminal rendering.
 - Centered display that adapts to terminal size
 - Proper terminal cleanup when exiting
 
+![TETRIS Game Screenshot](screenshot.png)
+
 ## Installation
 
 1. Make sure you have Go installed (version 1.16 or later)
