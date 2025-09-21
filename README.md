@@ -2,6 +2,8 @@
 
 A terminal-based TETRIS game implemented in Go using the pterm library for terminal rendering.
 
+This project follows the [Standard Go Project Layout](https://github.com/golang-standards/project-layout).
+
 ## Features
 
 - Classic TETRIS gameplay with all 7 tetromino shapes
@@ -20,13 +22,13 @@ A terminal-based TETRIS game implemented in Go using the pterm library for termi
 ## Building
 
 ```bash
-go build -o tetris .
+go build -o tetris cmd/tetris/main.go
 ```
 
 ## Running
 
 ```bash
-go run main.go
+go run cmd/tetris/main.go
 ```
 
 Or if you built the binary:
@@ -42,6 +44,22 @@ Or if you built the binary:
 - **↓** : Soft drop (move down faster)
 - **Space** : Hard drop (instantly drop piece)
 - **q** : Quit game
+
+## Project Structure
+
+```
+pterm-tetris/
+├── cmd/
+│   └── tetris/
+│       └── main.go      # Main application entry point
+├── internal/
+│   └── game/
+│       └── game.go      # Game logic and implementation
+├── go.mod               # Go module definition
+├── go.sum               # Go module checksums
+├── README.md            # This file
+└── LICENSE              # License information
+```
 
 ## License
 
