@@ -46,9 +46,17 @@ func main() {
 		}()
 
 		err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
+			if key.Code == keys.CtrlC {
+				exitChan <- true
+				return true, nil // Quit game on Ctrl+C
+			}
 			if key.Code == keys.RuneKey && (key.String() == "q" || key.String() == "Q") {
 				exitChan <- true
 				return true, nil // Quit game
+			}
+
+			if g.GameOver {
+				return false, nil // Ignore all other keys after game over
 			}
 
 			g.HandleInput(key)
@@ -79,10 +87,9 @@ func main() {
 				g.Draw(area)
 
 				if g.GameOver {
-					// Keep the game display visible after game over
-					time.Sleep(3 * time.Second)
+					// Keep the game display visible until explicit quit
 					needReset = true
-					gameFinished = true
+					// Do not set gameFinished; wait for 'q' or Ctrl+C
 				}
 			}
 		default:
