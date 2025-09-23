@@ -26,15 +26,16 @@ type Board struct {
 
 // Define the game state
 type Game struct {
-	Board     Board
-	Current   Tetromino
-	Next      Tetromino
-	Score     int
-	Level     int
-	Lines     int
-	GameOver  bool
-	DropTime  time.Time
-	DropSpeed time.Duration
+	Board        Board
+	Current      Tetromino
+	Next         Tetromino
+	Score        int
+	Level        int
+	Lines        int
+	GameOver     bool
+	DropTime     time.Time
+	DropSpeed    time.Duration
+	GhostEnabled bool
 }
 
 // Tetromino shapes
@@ -119,11 +120,12 @@ func NewBoard(width, height int) Board {
 func NewGame() *Game {
 	board := NewBoard(10, 20)
 	game := &Game{
-		Board:     board,
-		Score:     0,
-		Level:     1,
-		Lines:     0,
-		DropSpeed: 500 * time.Millisecond,
+		Board:        board,
+		Score:        0,
+		Level:        1,
+		Lines:        0,
+		DropSpeed:    500 * time.Millisecond,
+		GhostEnabled: true,
 	}
 	game.Current = game.newTetromino()
 	game.Next = game.newTetromino()
@@ -292,6 +294,28 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		copy(displayBoard[i], g.Board.Grid[i])
 	}
 
+	// Draw ghost piece (projection of hard drop)
+	if g.GhostEnabled && !g.GameOver {
+		ghost := g.Current
+		for !g.CheckCollision(ghost, 0, 1) {
+			ghost.Y++
+		}
+		// Mark ghost cells with sentinel value -1
+		for y := 0; y < len(ghost.Shape); y++ {
+			for x := 0; x < len(ghost.Shape[y]); x++ {
+				if ghost.Shape[y][x] != 0 {
+					boardY := ghost.Y + y
+					boardX := ghost.X + x
+					if boardY >= 0 && boardY < g.Board.Height && boardX >= 0 && boardX < g.Board.Width {
+						if displayBoard[boardY][boardX] == 0 { // don't overwrite existing blocks
+							displayBoard[boardY][boardX] = -1
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Draw current tetromino on the board copy
 	for y := 0; y < len(g.Current.Shape); y++ {
 		for x := 0; x < len(g.Current.Shape[y]); x++ {
@@ -324,6 +348,8 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 			switch displayBoard[y][x] {
 			case 0: // Empty
 				line += "  "
+			case -1: // Ghost piece
+				line += pterm.FgGray.Sprint("░░")
 			default: // Placed piece or current piece
 				// Convert back to color
 				color := pterm.Color(displayBoard[y][x])
@@ -366,6 +392,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "↑   : Rotate")
 	infoLines = append(infoLines, "↓   : Soft Drop")
 	infoLines = append(infoLines, "Space : Hard Drop")
+	infoLines = append(infoLines, "g   : Toggle Ghost")
 	infoLines = append(infoLines, "q   : Quit")
 
 	if g.GameOver {
@@ -448,6 +475,8 @@ func (g *Game) HandleInput(key keys.Key) {
 			g.Move(0, 1) // Move down
 		case "w", "W":
 			g.Rotate() // Rotate
+		case "g", "G":
+			g.GhostEnabled = !g.GhostEnabled // Toggle ghost piece
 		case " ":
 			// Hard drop
 			for !g.CheckCollision(g.Current, 0, 1) {
