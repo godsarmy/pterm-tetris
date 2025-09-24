@@ -44,6 +44,7 @@ Or if you built the binary:
 - **↑** : Rotate piece
 - **↓** : Soft drop (move down faster)
 - **Space** : Hard drop (instantly drop piece)
+- **+ / -** : Increase / decrease level
 - **g** : Toggle ghost piece (show/hide drop projection)
 - **q** : Quit game
 

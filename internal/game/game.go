@@ -248,10 +248,7 @@ func (g *Game) Update() {
 				g.Lines += lines
 				g.Score += lines * 100 * g.Level
 				g.Level = g.Lines/10 + 1
-				g.DropSpeed = time.Duration(500-50*(g.Level-1)) * time.Millisecond
-				if g.DropSpeed < 50*time.Millisecond {
-					g.DropSpeed = 50 * time.Millisecond
-				}
+				g.updateDropSpeed()
 			}
 
 			// Create new tetromino
@@ -283,6 +280,22 @@ func (g *Game) Rotate() {
 		// Revert if collision
 		g.Current.Shape = originalShape
 	}
+}
+
+func (g *Game) updateDropSpeed() {
+	g.DropSpeed = time.Duration(500-50*(g.Level-1)) * time.Millisecond
+	if g.DropSpeed < 50*time.Millisecond {
+		g.DropSpeed = 50 * time.Millisecond
+	}
+}
+
+func (g *Game) adjustLevel(delta int) {
+	newLevel := g.Level + delta
+	if newLevel < 1 {
+		newLevel = 1
+	}
+	g.Level = newLevel
+	g.updateDropSpeed()
 }
 
 // Draw the game
@@ -392,6 +405,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "↑     : Rotate")
 	infoLines = append(infoLines, "↓     : Soft Drop")
 	infoLines = append(infoLines, "Space : Hard Drop")
+	infoLines = append(infoLines, "+ / - : Level +/-")
 	infoLines = append(infoLines, "g     : Toggle Ghost")
 	infoLines = append(infoLines, "q     : Quit")
 
@@ -475,6 +489,10 @@ func (g *Game) HandleInput(key keys.Key) {
 			g.Move(0, 1) // Move down
 		case "w", "W":
 			g.Rotate() // Rotate
+		case "+":
+			g.adjustLevel(1)
+		case "-":
+			g.adjustLevel(-1)
 		case "g", "G":
 			g.GhostEnabled = !g.GhostEnabled // Toggle ghost piece
 		case " ":
