@@ -388,12 +388,12 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 
 	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, "Controls:")
-	infoLines = append(infoLines, "← → : Move")
-	infoLines = append(infoLines, "↑   : Rotate")
-	infoLines = append(infoLines, "↓   : Soft Drop")
+	infoLines = append(infoLines, "← →   : Move")
+	infoLines = append(infoLines, "↑     : Rotate")
+	infoLines = append(infoLines, "↓     : Soft Drop")
 	infoLines = append(infoLines, "Space : Hard Drop")
-	infoLines = append(infoLines, "g   : Toggle Ghost")
-	infoLines = append(infoLines, "q   : Quit")
+	infoLines = append(infoLines, "g     : Toggle Ghost")
+	infoLines = append(infoLines, "q     : Quit")
 
 	if g.GameOver {
 		infoLines = append(infoLines, "")
