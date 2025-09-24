@@ -511,7 +511,7 @@ func SeedRandom() {
 // ShowWelcomeScreen shows the welcome screen with ASCII art
 func ShowWelcomeScreen() {
 	// Clear screen
-	print("\033[H\033[2J")
+	CleanupTerminal()
 
 	// Calculate padding for centering welcome message
 	terminalWidth := 80  // Default width if we can't get actual terminal size
@@ -576,8 +576,13 @@ func WaitForStart() {
 	})
 }
 
-// CleanupTerminal cleans up the terminal after the game
+// CleanupTerminal clears the terminal
 func CleanupTerminal() {
+	print("\033[H\033[2J")
+}
+
+// ResetTerminal cleans up the terminal after the game
+func ResetTerminal() {
 	print("\033c")     // Reset terminal
 	print("\033[?25h") // Show cursor
 }

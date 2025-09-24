@@ -20,8 +20,8 @@ func main() {
 	// Wait for key press to start
 	game.WaitForStart()
 
-	// Clear screen again for game
-	print("\033[H\033[2J")
+	// Cleanup screen again for game
+	game.CleanupTerminal()
 
 	// Create game
 	g := game.NewGame()
@@ -118,6 +118,6 @@ cleanup:
 
 	// Reset terminal if needed
 	if needReset {
-		game.CleanupTerminal()
+		game.ResetTerminal()
 	}
 }
