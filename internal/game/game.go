@@ -425,7 +425,6 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		infoLines = append(infoLines, line)
 	}
 
-	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, "Controls:")
 	infoLines = append(infoLines, "← →   : Move")
 	infoLines = append(infoLines, "↑     : Rotate")
