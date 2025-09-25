@@ -37,6 +37,7 @@ type Game struct {
 	DropSpeed    time.Duration
 	GhostEnabled bool
 	ConfirmRestart bool // when true, a restart confirmation prompt is active
+	ConfirmQuit    bool // when true, a quit confirmation prompt is active
 }
 
 // Tetromino shapes
@@ -231,7 +232,7 @@ func (g *Game) ClearLines() int {
 
 // Update game state
 func (g *Game) Update() {
-	if g.GameOver || g.ConfirmRestart {
+	if g.GameOver || g.ConfirmRestart || g.ConfirmQuit {
 		return
 	}
 
@@ -446,6 +447,11 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		infoLines = append(infoLines, pterm.FgYellow.Sprint(pterm.Sprintf("Restart from level %d? (y/n)", g.Level)))
 	}
 
+	if g.ConfirmQuit {
+		infoLines = append(infoLines, "")
+		infoLines = append(infoLines, pterm.FgYellow.Sprint("Quit game? (y/n)"))
+	}
+
 	// Calculate layout
 	boardWidth := 24 // 2 borders + 2*10 blocks + 2 spaces
 	infoWidth := 20
@@ -535,6 +541,10 @@ func (g *Game) HandleInput(key keys.Key) {
 		}
 		return
 	}
+	// Quit confirmation handled in main keyboard loop; ignore other inputs here when active
+	if g.ConfirmQuit {
+		return
+	}
 
 	switch key.Code {
 	case keys.RuneKey:
@@ -561,7 +571,7 @@ func (g *Game) HandleInput(key keys.Key) {
 				g.Current.Y++
 			}
 		case "q", "Q":
-			g.GameOver = true // Quit game
+			g.ConfirmQuit = true // Prompt quit confirmation
 		}
 	case keys.Enter:
 		g.Rotate() // Rotate

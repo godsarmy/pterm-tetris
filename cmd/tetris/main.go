@@ -50,9 +50,31 @@ func main() {
 				exitChan <- true
 				return true, nil // Quit game on Ctrl+C
 			}
+
+			// Handle quit confirmation flow while playing
+			if g.ConfirmQuit {
+				if key.Code == keys.RuneKey {
+					switch key.String() {
+					case "y", "Y":
+						exitChan <- true
+						return true, nil // Confirm quit
+					case "n", "N":
+						g.ConfirmQuit = false
+						return false, nil // Cancel quit
+					}
+				}
+				return false, nil // Ignore other keys during quit confirm
+			}
+
+			// Immediate quit on 'q' only if game is already over
 			if key.Code == keys.RuneKey && (key.String() == "q" || key.String() == "Q") {
-				exitChan <- true
-				return true, nil // Quit game
+				if g.GameOver {
+					exitChan <- true
+					return true, nil // Quit after game over
+				}
+				// If not over, trigger confirmation prompt
+				g.ConfirmQuit = true
+				return false, nil
 			}
 
 			if g.GameOver {
