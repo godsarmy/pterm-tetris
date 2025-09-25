@@ -231,7 +231,7 @@ func (g *Game) ClearLines() int {
 
 // Update game state
 func (g *Game) Update() {
-	if g.GameOver {
+	if g.GameOver || g.ConfirmRestart {
 		return
 	}
 
