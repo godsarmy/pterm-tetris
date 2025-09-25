@@ -402,12 +402,21 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, "Next:")
 
-	// Draw next piece preview
-	nextSize := len(g.Next.Shape)
-	for y := 0; y < nextSize; y++ {
+	// Draw next piece preview in fixed 4x4 area to keep instructions aligned
+	previewSize := 4
+	shapeH := len(g.Next.Shape)
+	shapeW := 0
+	if shapeH > 0 {
+		shapeW = len(g.Next.Shape[0])
+	}
+	yStart := (previewSize - shapeH) / 2
+	xStart := (previewSize - shapeW) / 2
+	for y := 0; y < previewSize; y++ {
 		line := ""
-		for x := 0; x < nextSize; x++ {
-			if y < len(g.Next.Shape) && x < len(g.Next.Shape[y]) && g.Next.Shape[y][x] != 0 {
+		for x := 0; x < previewSize; x++ {
+			sy := y - yStart
+			sx := x - xStart
+			if sy >= 0 && sy < shapeH && sx >= 0 && sx < len(g.Next.Shape[sy]) && g.Next.Shape[sy][sx] != 0 {
 				line += g.Next.Color.Sprint("██")
 			} else {
 				line += "  "
