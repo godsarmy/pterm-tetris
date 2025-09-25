@@ -36,6 +36,7 @@ type Game struct {
 	DropTime     time.Time
 	DropSpeed    time.Duration
 	GhostEnabled bool
+	ConfirmRestart bool // when true, a restart confirmation prompt is active
 }
 
 // Tetromino shapes
@@ -298,6 +299,22 @@ func (g *Game) adjustLevel(delta int) {
 	g.updateDropSpeed()
 }
 
+// RestartSameLevel resets the game state while preserving the current level.
+func (g *Game) RestartSameLevel() {
+	level := g.Level
+	// reset board keeping same dimensions
+	g.Board = NewBoard(g.Board.Width, g.Board.Height)
+	g.Score = 0
+	g.Lines = 0
+	g.GameOver = false
+	g.Level = level
+	g.updateDropSpeed()
+	g.Current = g.newTetromino()
+	g.Next = g.newTetromino()
+	g.DropTime = time.Now().Add(g.DropSpeed)
+	g.ConfirmRestart = false
+}
+
 // Draw the game
 func (g *Game) Draw(area *pterm.AreaPrinter) {
 	// Create a copy of the board to draw on
@@ -407,12 +424,18 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "Space : Hard Drop")
 	infoLines = append(infoLines, "+ / - : Level +/-")
 	infoLines = append(infoLines, "g     : Toggle Ghost")
+	infoLines = append(infoLines, "r     : Restart")
 	infoLines = append(infoLines, "q     : Quit")
 
 	if g.GameOver {
 		infoLines = append(infoLines, "")
 		infoLines = append(infoLines, pterm.FgRed.Sprint("GAME OVER!"))
 		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'q' to quit."))
+	}
+
+	if g.ConfirmRestart {
+		infoLines = append(infoLines, "")
+		infoLines = append(infoLines, pterm.FgYellow.Sprint(pterm.Sprintf("Restart from level %d? (y/n)", g.Level)))
 	}
 
 	// Calculate layout
@@ -478,6 +501,21 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 
 // Handle keyboard input
 func (g *Game) HandleInput(key keys.Key) {
+	// If a confirmation is active, only process Y/N (and ignore everything else)
+	if g.ConfirmRestart {
+		if key.Code == keys.RuneKey {
+			switch key.String() {
+			case "y", "Y":
+				g.RestartSameLevel()
+				return
+			case "n", "N":
+				g.ConfirmRestart = false
+				return
+			}
+		}
+		return
+	}
+
 	switch key.Code {
 	case keys.RuneKey:
 		switch key.String() {
@@ -495,6 +533,8 @@ func (g *Game) HandleInput(key keys.Key) {
 			g.adjustLevel(-1)
 		case "g", "G":
 			g.GhostEnabled = !g.GhostEnabled // Toggle ghost piece
+		case "r", "R":
+			g.ConfirmRestart = true // Ask for confirmation to restart
 		case " ":
 			// Hard drop
 			for !g.CheckCollision(g.Current, 0, 1) {

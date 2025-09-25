@@ -46,6 +46,7 @@ Or if you built the binary:
 - **Space** : Hard drop (instantly drop piece)
 - **+ / -** : Increase / decrease level
 - **g** : Toggle ghost piece (show/hide drop projection)
+- **r** : Restart from current level (confirm with y/n)
 - **q** : Quit game
 
 ## License

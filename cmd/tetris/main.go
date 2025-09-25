@@ -56,7 +56,14 @@ func main() {
 			}
 
 			if g.GameOver {
-				return false, nil // Ignore all other keys after game over
+				// Allow restart confirmation flow while game over
+				if key.Code == keys.RuneKey {
+					switch key.String() {
+					case "r", "R", "y", "Y", "n", "N":
+						g.HandleInput(key)
+					}
+				}
+				return false, nil // Ignore other keys after game over
 			}
 
 			g.HandleInput(key)
