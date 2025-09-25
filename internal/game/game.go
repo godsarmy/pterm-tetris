@@ -439,7 +439,7 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	if g.GameOver {
 		infoLines = append(infoLines, "")
 		infoLines = append(infoLines, pterm.FgRed.Sprint("GAME OVER!"))
-		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'q' to quit."))
+		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'r' to restart or 'q' to quit."))
 	}
 
 	if g.ConfirmRestart {
@@ -510,6 +510,18 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 
 // Handle keyboard input
 func (g *Game) HandleInput(key keys.Key) {
+	// If game is over, allow direct restart on 'r' without confirmation
+	if g.GameOver {
+		if key.Code == keys.RuneKey {
+			switch key.String() {
+			case "r", "R":
+				g.RestartSameLevel()
+				return
+			}
+		}
+		return
+	}
+
 	// If a confirmation is active, only process Y/N (and ignore everything else)
 	if g.ConfirmRestart {
 		if key.Code == keys.RuneKey {
@@ -543,7 +555,7 @@ func (g *Game) HandleInput(key keys.Key) {
 		case "g", "G":
 			g.GhostEnabled = !g.GhostEnabled // Toggle ghost piece
 		case "r", "R":
-			g.ConfirmRestart = true // Ask for confirmation to restart
+			g.ConfirmRestart = true // Ask for confirmation to restart during play
 		case " ":
 			// Hard drop
 			for !g.CheckCollision(g.Current, 0, 1) {
