@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 	"unicode/utf8"
+	"strings"
 
 	"atomicgo.dev/keyboard"
 	"atomicgo.dev/keyboard/keys"
@@ -437,19 +438,17 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "r     : Restart")
 	infoLines = append(infoLines, "q     : Quit")
 
-	if g.GameOver {
-		infoLines = append(infoLines, "")
-		infoLines = append(infoLines, pterm.FgRed.Sprint("GAME OVER!"))
-		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'r' to restart or 'q' to quit."))
-	}
+	
 
-	// Overlay confirmation message to be shown at bottom center
-	var overlayPlain string
-	if g.ConfirmRestart {
-		overlayPlain = pterm.Sprintf("Restart from level %d? (y/n)", g.Level)
-	}
-	if g.ConfirmQuit {
-		overlayPlain = "Quit game? (y/n)"
+	// Overlay message (quit/restart/game over) to be shown at bottom center
+	var overlayLines []string
+	if g.GameOver {
+		overlayLines = append(overlayLines, pterm.FgRed.Sprint("GAME OVER!"))
+		overlayLines = append(overlayLines, pterm.FgRed.Sprint("Press 'r' to restart or 'q' to quit."))
+	} else if g.ConfirmRestart {
+		overlayLines = append(overlayLines, pterm.Sprintf("Restart from level %d? (y/n)", g.Level))
+	} else if g.ConfirmQuit {
+		overlayLines = append(overlayLines, "Quit game? (y/n)")
 	}
 
 	// Calculate layout
@@ -464,8 +463,9 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	if len(infoLines) > contentHeight {
 		contentHeight = len(infoLines)
 	}
-	if overlayPlain != "" {
-		contentHeight++ // account for overlay line
+	if len(overlayLines) > 0 {
+		// spacer + overlay lines
+		contentHeight += 1 + len(overlayLines)
 	}
 	verticalPadding := terminalHeight - contentHeight
 
@@ -515,18 +515,18 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		content += "\n"
 	}
 
-	// If an overlay confirmation is active, print it centered at the bottom of the game area
-	if overlayPlain != "" {
-		overlayWidth := utf8.RuneCountInString(overlayPlain)
-		innerPadCount := (totalContentWidth - overlayWidth) / 2
-		if innerPadCount < 0 {
-			innerPadCount = 0
+	// If an overlay is active, print it centered at the bottom of the game area
+	if len(overlayLines) > 0 {
+		// spacer above overlay
+		content += hPadding + strings.Repeat(" ", totalContentWidth) + "\n"
+		for _, line := range overlayLines {
+			w := utf8.RuneCountInString(pterm.RemoveColorFromString(line))
+			pad := (totalContentWidth - w) / 2
+			if pad < 0 {
+				pad = 0
+			}
+			content += hPadding + strings.Repeat(" ", pad) + line + "\n"
 		}
-		innerPad := ""
-		for i := 0; i < innerPadCount; i++ {
-			innerPad += " "
-		}
-		content += hPadding + innerPad + pterm.FgYellow.Sprint(overlayPlain) + "\n"
 	}
 
 	// Add remaining vertical padding (bottom)
