@@ -457,9 +457,9 @@ func (g *Game) buildOverlayLines() []string {
 		overlayLines = append(overlayLines, pterm.FgRed.Sprint("GAME OVER!"))
 		overlayLines = append(overlayLines, pterm.FgRed.Sprint("Press 'r' to restart or 'q' to quit."))
 	} else if g.ConfirmRestart {
-		overlayLines = append(overlayLines, pterm.Sprintf("Restart from level %d? (y/n)", g.Level))
+		overlayLines = append(overlayLines, pterm.FgYellow.Sprint(pterm.Sprintf("Restart from level %d? (y/n)", g.Level)))
 	} else if g.ConfirmQuit {
-		overlayLines = append(overlayLines, "Quit game? (y/n)")
+		overlayLines = append(overlayLines, pterm.FgYellow.Sprint("Quit game? (y/n)"))
 	}
 	return overlayLines
 }
