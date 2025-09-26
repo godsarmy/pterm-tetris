@@ -458,7 +458,16 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	totalContentWidth := boardWidth + infoWidth + 2 // +2 for spacing
 
 	horizontalPadding := (terminalWidth - totalContentWidth) / 2
-	verticalPadding := (terminalHeight - len(boardLines) - 2) / 2 // -2 for title lines
+
+	// Compute vertical padding to center the entire layout height
+	contentHeight := len(boardLines)
+	if len(infoLines) > contentHeight {
+		contentHeight = len(infoLines)
+	}
+	if overlayPlain != "" {
+		contentHeight++ // account for overlay line
+	}
+	verticalPadding := terminalHeight - contentHeight
 
 	// Ensure padding is not negative
 	if horizontalPadding < 0 {
@@ -477,8 +486,9 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	// Draw the content
 	content := "\n"
 
-	// Add vertical padding
-	for i := 0; i < verticalPadding/2; i++ {
+	// Add vertical padding (top)
+	topPad := verticalPadding / 2
+	for i := 0; i < topPad; i++ {
 		content += "\n"
 	}
 
@@ -519,8 +529,9 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		content += hPadding + innerPad + pterm.FgYellow.Sprint(overlayPlain) + "\n"
 	}
 
-	// Add remaining vertical padding
-	for i := 0; i < verticalPadding/2; i++ {
+	// Add remaining vertical padding (bottom)
+	bottomPad := verticalPadding - topPad
+	for i := 0; i < bottomPad; i++ {
 		content += "\n"
 	}
 
