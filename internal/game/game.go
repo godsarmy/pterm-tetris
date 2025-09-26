@@ -443,14 +443,13 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		infoLines = append(infoLines, pterm.FgRed.Sprint("Press 'r' to restart or 'q' to quit."))
 	}
 
+	// Overlay confirmation message to be shown at bottom center
+	var overlayPlain string
 	if g.ConfirmRestart {
-		infoLines = append(infoLines, "")
-		infoLines = append(infoLines, pterm.FgYellow.Sprint(pterm.Sprintf("Restart from level %d? (y/n)", g.Level)))
+		overlayPlain = pterm.Sprintf("Restart from level %d? (y/n)", g.Level)
 	}
-
 	if g.ConfirmQuit {
-		infoLines = append(infoLines, "")
-		infoLines = append(infoLines, pterm.FgYellow.Sprint("Quit game? (y/n)"))
+		overlayPlain = "Quit game? (y/n)"
 	}
 
 	// Calculate layout
@@ -504,6 +503,20 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		}
 
 		content += "\n"
+	}
+
+	// If an overlay confirmation is active, print it centered at the bottom of the game area
+	if overlayPlain != "" {
+		overlayWidth := utf8.RuneCountInString(overlayPlain)
+		innerPadCount := (totalContentWidth - overlayWidth) / 2
+		if innerPadCount < 0 {
+			innerPadCount = 0
+		}
+		innerPad := ""
+		for i := 0; i < innerPadCount; i++ {
+			innerPad += " "
+		}
+		content += hPadding + innerPad + pterm.FgYellow.Sprint(overlayPlain) + "\n"
 	}
 
 	// Add remaining vertical padding
