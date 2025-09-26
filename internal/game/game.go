@@ -320,28 +320,39 @@ func (g *Game) RestartSameLevel() {
 
 // Draw the game
 func (g *Game) Draw(area *pterm.AreaPrinter) {
-	// Create a copy of the board to draw on
+	display := g.buildDisplayBoard()
+	terminalWidth, terminalHeight := getTerminalSize()
+
+	boardLines := buildBoardLines(display)
+	infoLines := g.buildInfoLines()
+	overlayLines := g.buildOverlayLines()
+
+	content := composeContent(boardLines, infoLines, overlayLines, terminalWidth, terminalHeight)
+	area.Update(content)
+}
+
+// buildDisplayBoard returns a copy of the board with ghost and current piece applied.
+func (g *Game) buildDisplayBoard() [][]int {
 	displayBoard := make([][]int, g.Board.Height)
 	for i := range displayBoard {
 		displayBoard[i] = make([]int, g.Board.Width)
 		copy(displayBoard[i], g.Board.Grid[i])
 	}
 
-	// Draw ghost piece (projection of hard drop)
+	// ghost piece
 	if g.GhostEnabled && !g.GameOver {
 		ghost := g.Current
 		for !g.CheckCollision(ghost, 0, 1) {
 			ghost.Y++
 		}
-		// Mark ghost cells with sentinel value -1
 		for y := 0; y < len(ghost.Shape); y++ {
 			for x := 0; x < len(ghost.Shape[y]); x++ {
 				if ghost.Shape[y][x] != 0 {
-					boardY := ghost.Y + y
-					boardX := ghost.X + x
-					if boardY >= 0 && boardY < g.Board.Height && boardX >= 0 && boardX < g.Board.Width {
-						if displayBoard[boardY][boardX] == 0 { // don't overwrite existing blocks
-							displayBoard[boardY][boardX] = -1
+					by := ghost.Y + y
+					bx := ghost.X + x
+					if by >= 0 && by < g.Board.Height && bx >= 0 && bx < g.Board.Width {
+						if displayBoard[by][bx] == 0 {
+							displayBoard[by][bx] = -1
 						}
 					}
 				}
@@ -349,42 +360,41 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		}
 	}
 
-	// Draw current tetromino on the board copy
+	// current piece
 	for y := 0; y < len(g.Current.Shape); y++ {
 		for x := 0; x < len(g.Current.Shape[y]); x++ {
 			if g.Current.Shape[y][x] != 0 {
-				boardY := g.Current.Y + y
-				boardX := g.Current.X + x
-				if boardY >= 0 && boardY < g.Board.Height && boardX >= 0 && boardX < g.Board.Width {
-					displayBoard[boardY][boardX] = int(g.Current.Color)
+				by := g.Current.Y + y
+				bx := g.Current.X + x
+				if by >= 0 && by < g.Board.Height && bx >= 0 && bx < g.Board.Width {
+					displayBoard[by][bx] = int(g.Current.Color)
 				}
 			}
 		}
 	}
+	return displayBoard
+}
 
-	// Calculate padding for centering
-	terminalWidth := 80  // Default width if we can't get actual terminal size
-	terminalHeight := 24 // Default height if we can't get actual terminal size
-
-	// Try to get actual terminal size
+func getTerminalSize() (int, int) {
+	w, h := 80, 24
 	if width, height, err := pterm.GetTerminalSize(); err == nil {
-		terminalWidth = width
-		terminalHeight = height
+		w, h = width, height
 	}
+	return w, h
+}
 
-	// Prepare game board content
+func buildBoardLines(displayBoard [][]int) []string {
 	var boardLines []string
 	boardLines = append(boardLines, "┌────────────────────┐")
-	for y := 0; y < g.Board.Height; y++ {
+	for y := 0; y < len(displayBoard); y++ {
 		line := "│"
-		for x := 0; x < g.Board.Width; x++ {
+		for x := 0; x < len(displayBoard[y]); x++ {
 			switch displayBoard[y][x] {
-			case 0: // Empty
+			case 0:
 				line += "  "
-			case -1: // Ghost piece
+			case -1:
 				line += pterm.FgGray.Sprint("░░")
-			default: // Placed piece or current piece
-				// Convert back to color
+			default:
 				color := pterm.Color(displayBoard[y][x])
 				line += color.Sprint("██")
 			}
@@ -393,8 +403,10 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		boardLines = append(boardLines, line)
 	}
 	boardLines = append(boardLines, "└────────────────────┘")
+	return boardLines
+}
 
-	// Prepare info panel content
+func (g *Game) buildInfoLines() []string {
 	var infoLines []string
 	infoLines = append(infoLines, pterm.FgLightCyan.Sprint("TETRIS"))
 	infoLines = append(infoLines, pterm.FgLightWhite.Sprint("v"+version.Version))
@@ -405,7 +417,6 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "")
 	infoLines = append(infoLines, "Next:")
 
-	// Draw next piece preview in fixed 4x4 area to keep instructions aligned
 	previewSize := 4
 	shapeH := len(g.Next.Shape)
 	shapeW := 0
@@ -437,10 +448,10 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	infoLines = append(infoLines, "g     : Toggle Ghost")
 	infoLines = append(infoLines, "r     : Restart")
 	infoLines = append(infoLines, "q     : Quit")
+	return infoLines
+}
 
-	
-
-	// Overlay message (quit/restart/game over) to be shown at bottom center
+func (g *Game) buildOverlayLines() []string {
 	var overlayLines []string
 	if g.GameOver {
 		overlayLines = append(overlayLines, pterm.FgRed.Sprint("GAME OVER!"))
@@ -450,26 +461,25 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 	} else if g.ConfirmQuit {
 		overlayLines = append(overlayLines, "Quit game? (y/n)")
 	}
+	return overlayLines
+}
 
-	// Calculate layout
-	boardWidth := 24 // 2 borders + 2*10 blocks + 2 spaces
+func composeContent(boardLines, infoLines, overlayLines []string, terminalWidth, terminalHeight int) string {
+	boardWidth := 24
 	infoWidth := 20
-	totalContentWidth := boardWidth + infoWidth + 2 // +2 for spacing
+	totalContentWidth := boardWidth + infoWidth + 2
 
 	horizontalPadding := (terminalWidth - totalContentWidth) / 2
 
-	// Compute vertical padding to center the entire layout height
 	contentHeight := len(boardLines)
 	if len(infoLines) > contentHeight {
 		contentHeight = len(infoLines)
 	}
 	if len(overlayLines) > 0 {
-		// spacer + overlay lines
 		contentHeight += 1 + len(overlayLines)
 	}
 	verticalPadding := terminalHeight - contentHeight
 
-	// Ensure padding is not negative
 	if horizontalPadding < 0 {
 		horizontalPadding = 0
 	}
@@ -477,47 +487,32 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		verticalPadding = 0
 	}
 
-	// Create horizontal padding
 	hPadding := ""
 	for i := 0; i < horizontalPadding; i++ {
 		hPadding += " "
 	}
 
-	// Draw the content
 	content := "\n"
-
-	// Add vertical padding (top)
 	topPad := verticalPadding / 2
 	for i := 0; i < topPad; i++ {
 		content += "\n"
 	}
 
-	// Draw the game area with two columns
 	for i := 0; i < len(boardLines) || i < len(infoLines); i++ {
-		content += hPadding // Add horizontal padding
-
-		// Left column (game board)
+		content += hPadding
 		if i < len(boardLines) {
 			content += boardLines[i]
 		} else {
-			// Fill with empty space to match board height
-			content += "                        " // 24 spaces
+			content += "                        "
 		}
-
-		// Space between columns
 		content += "  "
-
-		// Right column (info panel)
 		if i < len(infoLines) {
 			content += infoLines[i]
 		}
-
 		content += "\n"
 	}
 
-	// If an overlay is active, print it centered at the bottom of the game area
 	if len(overlayLines) > 0 {
-		// spacer above overlay
 		content += hPadding + strings.Repeat(" ", totalContentWidth) + "\n"
 		for _, line := range overlayLines {
 			w := utf8.RuneCountInString(pterm.RemoveColorFromString(line))
@@ -529,13 +524,11 @@ func (g *Game) Draw(area *pterm.AreaPrinter) {
 		}
 	}
 
-	// Add remaining vertical padding (bottom)
 	bottomPad := verticalPadding - topPad
 	for i := 0; i < bottomPad; i++ {
 		content += "\n"
 	}
-
-	area.Update(content)
+	return content
 }
 
 // Handle keyboard input
