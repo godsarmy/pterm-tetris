@@ -3,6 +3,7 @@ package game
 import (
 	"math/rand"
 	"time"
+	"unicode/utf8"
 
 	"atomicgo.dev/keyboard"
 	"atomicgo.dev/keyboard/keys"
@@ -623,7 +624,7 @@ func ShowWelcomeScreen() {
 
 	// Calculate horizontal padding
 	hPadding := ""
-	titleWidth := len(tetrisArt[0]) // Width of the first line
+	titleWidth := utf8.RuneCountInString(tetrisArt[0]) // Width of the first line (display columns)
 	if titleWidth < terminalWidth {
 		for i := 0; i < (terminalWidth-titleWidth)/2; i++ {
 			hPadding += " "
