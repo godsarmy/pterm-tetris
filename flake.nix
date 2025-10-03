@@ -14,7 +14,7 @@
       {
         packages.default = pkgs.buildGoModule {
           pname = "pterm-tetris";
-          version = "0.0.1";
+          version = "1.2.0";
 
           src = ./.;
 
