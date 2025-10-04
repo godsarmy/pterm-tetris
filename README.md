@@ -9,8 +9,6 @@ library for terminal rendering.
 - Colorful terminal-based graphics
 - Score tracking and level progression
 - Next piece preview
-- Centered display that adapts to terminal size
-- Proper terminal cleanup when exiting
 
 ![TETRIS Game Screenshot](screenshot.png)
 
